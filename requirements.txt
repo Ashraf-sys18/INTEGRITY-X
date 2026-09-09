@@ -1,0 +1,7 @@
+fastapi==0.141.1
+uvicorn==0.52.4
+pennylane==0.45.1
+pennylane-lightning==0.45.0
+scikit-learn
+numpy
+pydantic==2.13.5
