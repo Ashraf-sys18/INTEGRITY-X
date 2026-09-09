@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SIH26141 — Quantum-Inspired Signature Threat Detection</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #131826;
+    --panel-border: #232a3d;
+    --text: #e6e9f2;
+    --muted: #8891a7;
+    --accent: #6ee7ff;
+    --accent2: #a78bfa;
+    --low: #34d399;
+    --medium: #fbbf24;
+    --high: #fb923c;
+    --critical: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: 'Segoe UI', system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 20% -10%, #1a2036 0%, var(--bg) 60%);
+    color: var(--text); padding: 24px;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; letter-spacing: 0.3px; }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 0.9rem; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 12px; padding: 16px 18px;
+  }
+  .stat-label { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 1.9rem; font-weight: 600; margin-top: 4px; }
+  .accent { color: var(--accent); }
+  .row { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .controls button {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; color: #0b0e14; font-weight: 600; padding: 10px 16px;
+    border-radius: 8px; cursor: pointer; margin-right: 10px; font-size: 0.85rem;
+  }
+  .controls button.secondary { background: transparent; border: 1px solid var(--panel-border); color: var(--text); }
+  .controls { margin-bottom: 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--panel-border); }
+  th { color: var(--muted); font-weight: 500; text-transform: uppercase; font-size: 0.7rem; }
+  .badge { padding: 2px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+  .badge.low { background: rgba(52,211,153,0.15); color: var(--low); }
+  .badge.medium { background: rgba(251,191,36,0.15); color: var(--medium); }
+  .badge.high { background: rgba(251,146,60,0.15); color: var(--high); }
+  .badge.critical { background: rgba(248,113,113,0.15); color: var(--critical); }
+  .badge.anom-yes { background: rgba(248,113,113,0.15); color: var(--critical); }
+  .badge.anom-no { background: rgba(110,231,255,0.1); color: var(--accent); }
+  .panel-title { font-size: 0.95rem; margin: 0 0 12px; color: var(--text); }
+  .chain-status { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.ok { background: var(--low); box-shadow: 0 0 8px var(--low); }
+  .dot.bad { background: var(--critical); box-shadow: 0 0 8px var(--critical); }
+  .scroll { max-height: 320px; overflow-y: auto; }
+  .footer-note { color: var(--muted); font-size: 0.75rem; margin-top: 20px; line-height: 1.5; }
+  code { background: #1c2233; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<h1>🔐 SIH26141 — Quantum-Inspired Cyber Threat Detection for Digital Signature Security</h1>
+<p class="sub">Live monitoring dashboard · PQC risk scoring + quantum-kernel anomaly detection + tamper-evident audit log</p>
+
+<div class="controls">
+  <button onclick="simulate(false)">Simulate Normal Traffic (10)</button>
+  <button onclick="simulate(true)">Simulate Attack Burst (10)</button>
+  <button class="secondary" onclick="refreshAll()">Refresh</button>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="stat-label">Total Events</div>
+    <div class="stat-value" id="stat-total">0</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Anomalies Detected</div>
+    <div class="stat-value" id="stat-anomalous" style="color: var(--critical)">0</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Quantum-Vulnerable Sigs</div>
+    <div class="stat-value" id="stat-qv" style="color: var(--high)">0</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Audit Chain</div>
+    <div class="chain-status" style="margin-top:10px;">
+      <div class="dot ok" id="chain-dot"></div>
+      <span id="chain-text">Intact</span>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="card">
+    <p class="panel-title">Risk Level Breakdown</p>
+    <canvas id="riskChart" height="140"></canvas>
+  </div>
+  <div class="card">
+    <p class="panel-title">Recent Anomaly Scores</p>
+    <canvas id="anomalyChart" height="140"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <p class="panel-title">Recent Signature Events</p>
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>Signer</th><th>Algorithm</th><th>Risk</th><th>Anomaly</th><th>Score</th><th>Reason</th></tr>
+      </thead>
+      <tbody id="events-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<p class="footer-note">
+  Backend: FastAPI · Detection: PennyLane quantum-kernel embedding (4-qubit simulator) + SVM ·
+  Audit: SHA-256 hash-chained log · Run backend with <code>uvicorn main:app --reload --port 8000</code>,
+  then open this file in a browser.
+</p>
+
+<script>
+const API = "http://127.0.0.1:8000";
+let riskChart, anomalyChart;
+
+function badge(cls, text) {
+  return `<span class="badge ${cls}">${text}</span>`;
+}
+
+async function simulate(attack) {
+  await fetch(`${API}/simulate?n=10&attack=${attack}`, { method: "POST" });
+  refreshAll();
+}
+
+async function refreshAll() {
+  const [stats, events, audit] = await Promise.all([
+    fetch(`${API}/stats`).then(r => r.json()),
+    fetch(`${API}/events?limit=25`).then(r => r.json()),
+    fetch(`${API}/audit/verify`).then(r => r.json()),
+  ]);
+
+  document.getElementById("stat-total").textContent = stats.total ?? 0;
+  document.getElementById("stat-anomalous").textContent = stats.anomalous ?? 0;
+  document.getElementById("stat-qv").textContent = stats.quantum_vulnerable ?? 0;
+
+  const dot = document.getElementById("chain-dot");
+  const txt = document.getElementById("chain-text");
+  if (audit.chain_intact) {
+    dot.className = "dot ok"; txt.textContent = `Intact (${audit.length} records)`;
+  } else {
+    dot.className = "dot bad"; txt.textContent = "TAMPERED!";
+  }
+
+  const rb = stats.risk_breakdown || {};
+  updateRiskChart(rb);
+
+  const rows = events.slice().reverse().map(e => `
+    <tr>
+      <td>${e.event.signer_id}</td>
+      <td>${e.event.algorithm}</td>
+      <td>${badge(e.risk.risk_level, e.risk.risk_level)}</td>
+      <td>${badge(e.anomaly.is_anomalous ? "anom-yes" : "anom-no", e.anomaly.is_anomalous ? "ANOMALY" : "normal")}</td>
+      <td>${e.anomaly.anomaly_score.toFixed(2)}</td>
+      <td style="color:var(--muted); max-width:280px;">${e.risk.reason}</td>
+    </tr>
+  `).join("");
+  document.getElementById("events-body").innerHTML = rows;
+
+  updateAnomalyChart(events);
+}
+
+function updateRiskChart(rb) {
+  const labels = ["low", "medium", "high", "critical"];
+  const data = labels.map(l => rb[l] || 0);
+  const colors = ["#34d399", "#fbbf24", "#fb923c", "#f87171"];
+  if (!riskChart) {
+    riskChart = new Chart(document.getElementById("riskChart"), {
+      type: "doughnut",
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+      options: { plugins: { legend: { labels: { color: "#e6e9f2" } } } }
+    });
+  } else {
+    riskChart.data.datasets[0].data = data;
+    riskChart.update();
+  }
+}
+
+function updateAnomalyChart(events) {
+  const recent = events.slice(-20);
+  const labels = recent.map((_, i) => i + 1);
+  const scores = recent.map(e => e.anomaly.anomaly_score);
+  if (!anomalyChart) {
+    anomalyChart = new Chart(document.getElementById("anomalyChart"), {
+      type: "line",
+      data: { labels, datasets: [{ label: "Anomaly score", data: scores, borderColor: "#6ee7ff", tension: 0.3, pointRadius: 2 }] },
+      options: {
+        scales: {
+          x: { ticks: { color: "#8891a7" }, grid: { color: "#232a3d" } },
+          y: { min: 0, max: 1, ticks: { color: "#8891a7" }, grid: { color: "#232a3d" } }
+        },
+        plugins: { legend: { labels: { color: "#e6e9f2" } } }
+      }
+    });
+  } else {
+    anomalyChart.data.labels = labels;
+    anomalyChart.data.datasets[0].data = scores;
+    anomalyChart.update();
+  }
+}
+
+refreshAll();
+setInterval(refreshAll, 5000);
+</script>
+</body>
+</html>
